@@ -1,4 +1,5 @@
 import numpy as np
+
 np.set_printoptions(formatter={'int': hex})
 
 
@@ -44,12 +45,6 @@ def main():
 
     mix_columns_matrix = mix_columns_transformation(row_shifted)
     print("mix columns matrix\n" + str(mix_columns_matrix) + "\n")
-
-    # special test key - from notes
-    # special_key = [0x2b, 0x7e, 0x15, 0x16,
-    #                0x28, 0xae, 0xde, 0xa6,
-    #                0xab, 0xf7, 0x15, 0x88,
-    #                0x09, 0xcf, 0x4f, 0x3c]
 
     trans_key_to_columns = arrange_key_into_columns(key)
     print("key matrix arranged in columns\n" + str(np.asarray(trans_key_to_columns)) + "\n")
@@ -193,7 +188,10 @@ def generate_all_key_columns(orig_key_column_form, s_box):
 def generate_special_byte(current_col_num):
     raw_special_byte = 0b00000010 ** ((current_col_num - 4) / 4)
     if raw_special_byte > 0xff:
-        special_byte = (int(raw_special_byte) ^ 0b100011011) & 0x0ff
+        if current_col_num == 40:
+            special_byte = (int(raw_special_byte) ^ 0b1000110110) & 0x0ff
+        else:
+            special_byte = (int(raw_special_byte) ^ 0b100011011) & 0x0ff
     else:
         special_byte = raw_special_byte
     return special_byte
@@ -206,6 +204,7 @@ def key_columns_to_rows(column_arng_key):
         for j in range(4):
             row_arranged_key[j][i] = column_arng_key[i][j]
     return row_arranged_key
+
 
 main()
 
