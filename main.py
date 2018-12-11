@@ -8,17 +8,11 @@ def main():
                   0x88, 0x5a, 0x30, 0x8d,
                   0x31, 0x31, 0x98, 0xa2,
                   0xe0, 0x37, 0x07, 0x34]
-    state_matrix = arrange_plain_text_into_state_matrix(plain_text)
-    print("state matrix\n" + str(np.asarray(state_matrix)) + "\n")
+
     key = [0x2b, 0x7e, 0x15, 0x16,
            0x28, 0xae, 0xd2, 0xa6,
            0xab, 0xf7, 0x15, 0x88,
            0x09, 0xcf, 0x4f, 0x3c]
-    key_matrix = arrange_key_into_matrix(key)
-    print("key matrix\n" + str(np.asarray(key_matrix)) + "\n")
-
-    added_key = add_key(state_matrix, key_matrix)
-    print("added key matrix\n" + str(np.asarray(added_key)) + "\n")
 
     sbox = [[0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76],
             [0xCA, 0x82, 0xC9, 0x7D, 0xFA, 0x59, 0x47, 0xF0, 0xAD, 0xD4, 0xA2, 0xAF, 0x9C, 0xA4, 0x72, 0xC0],
@@ -37,14 +31,11 @@ def main():
             [0xE1, 0xF8, 0x98, 0x11, 0x69, 0xD9, 0x8E, 0x94, 0x9B, 0x1E, 0x87, 0xE9, 0xCE, 0x55, 0x28, 0xDF],
             [0x8C, 0xA1, 0x89, 0x0D, 0xBF, 0xE6, 0x42, 0x68, 0x41, 0x99, 0x2D, 0x0F, 0xB0, 0x54, 0xBB, 0x16]]
 
-    byte_sub_array = byte_substitution(added_key, sbox)
-    print("byte-sub matrix\n" + str(byte_sub_array) + "\n")
+    state_matrix = arrange_plain_text_into_state_matrix(plain_text)
+    print("state matrix\n" + str(np.asarray(state_matrix)) + "\n")
 
-    row_shifted = shift_row_transformation(byte_sub_array)
-    print("row shifted matrix\n" + str(row_shifted) + "\n")
-
-    mix_columns_matrix = mix_columns_transformation(row_shifted)
-    print("mix columns matrix\n" + str(mix_columns_matrix) + "\n")
+    key_matrix = arrange_key_into_matrix(key)
+    print("key matrix\n" + str(np.asarray(key_matrix)) + "\n")
 
     trans_key_to_columns = arrange_key_into_columns(key)
     print("key matrix arranged in columns\n" + str(np.asarray(trans_key_to_columns)) + "\n")
@@ -55,9 +46,24 @@ def main():
     master_key_all_rounds = generate_all_key_columns(trans_key_to_columns, sbox)
     print("master key for all rounds\n" + str(np.asarray(master_key_all_rounds)) + "\n")
 
+    # ------- Encryption steps ------------
+
+    state_matrix = add_key(state_matrix, key_matrix)
+    print("added key matrix\n" + str(np.asarray(state_matrix)) + "\n")
+    #
+    # state_matrix = byte_substitution(state_matrix, sbox)
+    # print("byte-sub matrix\n" + str(state_matrix) + "\n")
+    #
+    # state_matrix = shift_row_transformation(state_matrix)
+    # print("row shifted matrix\n" + str(state_matrix) + "\n")
+    #
+    # state_matrix = mix_columns_transformation(state_matrix)
+    # print("mix columns matrix\n" + str(state_matrix) + "\n")
+
 # -----------------------------------------------------------------------------------------------
 
 
+# arrange list of plain text hex values into 4x4 matrix and output resulting matrix
 def arrange_plain_text_into_state_matrix(p_text):
     state_matrix = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
     char_counter = 0
@@ -80,14 +86,25 @@ def arrange_key_into_matrix(key_list):
 
 # before first round
 def add_key(st_matrx, key_matrx):
-    return np.bitwise_xor(st_matrx, key_matrx)
+    mult_result = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+    for i in range(len(st_matrx)):
+        for j in range(len(key_matrx[0])):
+            for k in range(len(key_matrx)):
+                mult_result[i][j] += st_matrx[i][k] * st_matrx[k][j]
+    return mult_result
+    # return np.bitwise_xor(st_matrx, key_matrx)
 
 
 def byte_substitution(key_added_matrx, s_bx):
-    for element in np.nditer(key_added_matrx, op_flags=['readwrite']):
-        high_bit_value = element >> 4
-        low_bit_value = element & 0x0f
-        element[...] = s_bx[high_bit_value][low_bit_value]
+    for i in range(len(key_added_matrx)):
+        for j in range(len(key_added_matrx[i])):
+            high_bit_value = key_added_matrx[i][j] >> 4
+            low_bit_value = key_added_matrx[i][j] & 0x0f
+            key_added_matrx[i][j] = s_bx[high_bit_value][low_bit_value]
+    # for element in np.nditer(key_added_matrx):
+    #     high_bit_value = element >> 4
+    #     low_bit_value = element & 0x0f
+    #     element[...] = s_bx[high_bit_value][low_bit_value]
     return key_added_matrx
 
 
