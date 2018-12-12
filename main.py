@@ -31,34 +31,53 @@ def main():
             [0xE1, 0xF8, 0x98, 0x11, 0x69, 0xD9, 0x8E, 0x94, 0x9B, 0x1E, 0x87, 0xE9, 0xCE, 0x55, 0x28, 0xDF],
             [0x8C, 0xA1, 0x89, 0x0D, 0xBF, 0xE6, 0x42, 0x68, 0x41, 0x99, 0x2D, 0x0F, 0xB0, 0x54, 0xBB, 0x16]]
 
+    fixed_matrix = [[0x02, 0x03, 0x01, 0x01],
+                    [0x01, 0x02, 0x03, 0x01],
+                    [0x01, 0x01, 0x02, 0x03],
+                    [0x03, 0x01, 0x01, 0x02]]
+
+    # make input into 4x4 matrix
     state_matrix = arrange_plain_text_into_state_matrix(plain_text)
     print("state matrix\n" + str(np.asarray(state_matrix)) + "\n")
 
+    # make original key into 4x4 matrix
     key_matrix = arrange_key_into_matrix(key)
     print("key matrix\n" + str(np.asarray(key_matrix)) + "\n")
 
+    # arrange key matrix into columns to use to generate all round columns
     trans_key_to_columns = arrange_key_into_columns(key)
-    print("key matrix arranged in columns\n" + str(np.asarray(trans_key_to_columns)) + "\n")
+    # print("key matrix arranged in columns\n" + str(np.asarray(trans_key_to_columns)) + "\n")
 
-    trans_key_to_rows = key_columns_to_rows(trans_key_to_columns)
-    print("key matrix arranged in rows\n" + str(np.asarray(trans_key_to_rows)) + "\n")
-
+    # generate all round key columns
     master_key_all_rounds = generate_all_key_columns(trans_key_to_columns, sbox)
-    print("master key for all rounds\n" + str(np.asarray(master_key_all_rounds)) + "\n")
+    # print("master key for all rounds\n" + str(np.asarray(master_key_all_rounds)) + "\n")
 
-    # ------- Encryption steps ------------
+    # --------- Encryption steps ------------
 
+    # initial round key addition
     state_matrix = add_key(state_matrix, key_matrix)
     print("added key matrix\n" + str(np.asarray(state_matrix)) + "\n")
-    #
-    # state_matrix = byte_substitution(state_matrix, sbox)
-    # print("byte-sub matrix\n" + str(state_matrix) + "\n")
-    #
-    # state_matrix = shift_row_transformation(state_matrix)
-    # print("row shifted matrix\n" + str(state_matrix) + "\n")
-    #
-    # state_matrix = mix_columns_transformation(state_matrix)
-    # print("mix columns matrix\n" + str(state_matrix) + "\n")
+
+    # ---- 10 rounds (10th round does not have mixed-column step -----
+    for i in range(1, 11):
+
+        state_matrix = byte_substitution(state_matrix, sbox)
+        print("byte-sub matrix\n" + str(np.asarray(state_matrix)) + "\n")
+
+        state_matrix = shift_row_transformation(state_matrix)
+        print("row shifted matrix\n" + str(np.asarray(state_matrix)) + "\n")
+
+        # do mix matrix for all rounds except 10th round
+        if i != 10:
+            state_matrix = mix_columns_transformation(state_matrix, fixed_matrix)
+            print("mix columns matrix\n" + str(np.asarray(state_matrix)) + "\n")
+
+        # get round key for ith round
+        round_key = get_round_key_from_master(master_key_all_rounds, i)
+        print("round key\n" + str(np.asarray(round_key)) + "\n")
+
+        state_matrix = add_key(state_matrix, round_key)
+        print("added key matrix\n" + str(np.asarray(state_matrix)) + "\n")
 
 # -----------------------------------------------------------------------------------------------
 
@@ -89,8 +108,7 @@ def add_key(st_matrx, key_matrx):
     mult_result = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
     for i in range(len(st_matrx)):
         for j in range(len(key_matrx[0])):
-            for k in range(len(key_matrx)):
-                mult_result[i][j] += st_matrx[i][k] * st_matrx[k][j]
+            mult_result[i][j] = st_matrx[i][j] ^ key_matrx[i][j]
     return mult_result
     # return np.bitwise_xor(st_matrx, key_matrx)
 
@@ -111,18 +129,15 @@ def byte_substitution(key_added_matrx, s_bx):
 def shift_row_transformation(byt_sub_matx):
     row_shifted_matrix = byt_sub_matx
     row_shifted_matrix[0] = byt_sub_matx[0]
-    row_shifted_matrix[1] = np.roll(byt_sub_matx[1], -1)
-    row_shifted_matrix[2] = np.roll(byt_sub_matx[2], -2)
-    row_shifted_matrix[3] = np.roll(byt_sub_matx[3], -3)
+    row_shifted_matrix[1] = rotate_array(byt_sub_matx[1], 1)
+    row_shifted_matrix[2] = rotate_array(byt_sub_matx[2], 2)
+    row_shifted_matrix[3] = rotate_array(byt_sub_matx[3], 3)
     return row_shifted_matrix
 
 
-def mix_columns_transformation(row_shft_mtrx):
+def mix_columns_transformation(row_shft_mtrx, fx_matx):
     mix_col_matrx = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
-    fixed_matrix = [[0x02, 0x03, 0x01, 0x01],
-                    [0x01, 0x02, 0x03, 0x01],
-                    [0x01, 0x01, 0x02, 0x03],
-                    [0x03, 0x01, 0x01, 0x02]]
+    fixed_matrix = fx_matx
     for i in range(len(fixed_matrix)):
         for j in range(len(row_shft_mtrx[0])):
             mixed_entry = 0
@@ -144,7 +159,7 @@ def mix_columns_transformation(row_shft_mtrx):
             else:
                 mix_col_matrx[i][j] = mixed_entry
 
-    return np.asarray(mix_col_matrx)
+    return mix_col_matrx
 
 
 def arrange_key_into_columns(key_array):
@@ -223,6 +238,19 @@ def key_columns_to_rows(column_arng_key):
     return row_arranged_key
 
 
+def rotate_array(arr, number_of_spaces):
+    return arr[number_of_spaces:] + arr[:number_of_spaces]
+
+
+# extracts proper round key from master round key list
+def get_round_key_from_master(master_key, round_num):
+    round_key = []
+    starting_row_master_index = round_num * 4
+    for i in range(4):
+        round_key.append(master_key[starting_row_master_index + i])
+    return key_columns_to_rows(round_key)
+
+
 main()
 
-
+# end
