@@ -9,10 +9,20 @@ def main():
                   0x31, 0x31, 0x98, 0xa2,
                   0xe0, 0x37, 0x07, 0x34]
 
+    # plain_text = [0x00, 0x11, 0x22, 0x33,
+    #               0x44, 0x55, 0x66, 0x77,
+    #               0x88, 0x99, 0xaa, 0xbb,
+    #               0xcc, 0xdd, 0xee, 0xff]
+
     key = [0x2b, 0x7e, 0x15, 0x16,
            0x28, 0xae, 0xd2, 0xa6,
            0xab, 0xf7, 0x15, 0x88,
            0x09, 0xcf, 0x4f, 0x3c]
+
+    # key = [0x00, 0x01, 0x02, 0x03,
+    #        0x04, 0x05, 0x06, 0x07,
+    #        0x08, 0x09, 0x0a, 0x0b,
+    #        0x0c, 0x0d, 0x0e, 0x0f]
 
     sbox = [[0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76],
             [0xCA, 0x82, 0xC9, 0x7D, 0xFA, 0x59, 0x47, 0xF0, 0xAD, 0xD4, 0xA2, 0xAF, 0x9C, 0xA4, 0x72, 0xC0],
@@ -79,6 +89,8 @@ def main():
         state_matrix = add_key(state_matrix, round_key)
         print("added key matrix\n" + str(np.asarray(state_matrix)) + "\n")
 
+    # print("round[10].output 69c4e0d86a7b0430d8cdb78070b4c55a")
+
 # -----------------------------------------------------------------------------------------------
 
 
@@ -110,7 +122,6 @@ def add_key(st_matrx, key_matrx):
         for j in range(len(key_matrx[0])):
             mult_result[i][j] = st_matrx[i][j] ^ key_matrx[i][j]
     return mult_result
-    # return np.bitwise_xor(st_matrx, key_matrx)
 
 
 def byte_substitution(key_added_matrx, s_bx):
@@ -119,10 +130,6 @@ def byte_substitution(key_added_matrx, s_bx):
             high_bit_value = key_added_matrx[i][j] >> 4
             low_bit_value = key_added_matrx[i][j] & 0x0f
             key_added_matrx[i][j] = s_bx[high_bit_value][low_bit_value]
-    # for element in np.nditer(key_added_matrx):
-    #     high_bit_value = element >> 4
-    #     low_bit_value = element & 0x0f
-    #     element[...] = s_bx[high_bit_value][low_bit_value]
     return key_added_matrx
 
 
@@ -192,7 +199,8 @@ def generate_all_key_columns(orig_key_column_form, s_box):
             new_col = [0, 0, 0, 0]
 
             # transform W(col_num - 1) by shifting cyclically up by 1 (-1)
-            transformed_col_minus_1 = np.roll(master_key_columns[col_num - 1], -1)
+            transformed_col_minus_1 = rotate_array_neg_one(master_key_columns[col_num - 1])
+            # print(np.asarray(transformed_col_minus_1))
             # replace transformed column minus 1 with s-box values
             s_box_subed = [0, 0, 0, 0]
             s_box_subed_element_counter = 0
@@ -238,6 +246,10 @@ def key_columns_to_rows(column_arng_key):
     return row_arranged_key
 
 
+def rotate_array_neg_one(arr):
+    return arr[1:] + arr[:1]
+
+
 def rotate_array(arr, number_of_spaces):
     return arr[number_of_spaces:] + arr[:number_of_spaces]
 
@@ -253,4 +265,4 @@ def get_round_key_from_master(master_key, round_num):
 
 main()
 
-# end
+# end ####
